@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zakreslovač">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>GCH Zakreslovač – elektro body</title>
+<style>
+:root{--bg:#f3f4f6;--panel:#fff;--ink:#111827;--muted:#6b7280;--line:#d1d5db;--acc:#1d4ed8;--accbg:#dbeafe;--danger:#b91c1c;
+  --sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom);}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body{position:fixed;inset:0}
+#app{display:flex;flex-direction:column;height:100%}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;padding-top:calc(6px + var(--sat));background:var(--panel);border-bottom:1px solid var(--line)}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-width:58px}
+.seg button.on{background:var(--acc);color:#fff}
+button{font:inherit;font-size:15px;font-weight:600;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);cursor:pointer;touch-action:manipulation}
+button:active{filter:brightness(.92)}
+button.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.danger{color:var(--danger);border-color:#fca5a5}
+button:disabled{opacity:.4}
+.sp{flex:1}
+#proj{font-size:13px;color:var(--muted);max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view{position:relative;flex:1;overflow:hidden;touch-action:none;background:#e5e7eb}
+#world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#world img{display:block;pointer-events:none;-webkit-user-drag:none}
+#world svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+#hint{position:absolute;left:8px;top:8px;right:64px;pointer-events:none;display:flex}
+#hint span{background:rgba(17,24,39,.82);color:#fff;font-size:13px;padding:6px 10px;border-radius:10px;max-width:100%}
+#zoom{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px}
+#zoom button{width:48px;height:48px;padding:0;font-size:22px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+#empty{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:24px;text-align:center;color:var(--muted)}
+#palette{display:flex;gap:6px;overflow-x:auto;padding:6px 8px;padding-bottom:calc(6px + var(--sab));background:var(--panel);border-top:1px solid var(--line);touch-action:pan-x;-webkit-overflow-scrolling:touch}
+#palette button{flex:0 0 auto;width:72px;min-height:68px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;line-height:1.1}
+#palette button.on{background:var(--accbg);border-color:var(--acc);box-shadow:inset 0 0 0 2px var(--acc)}
+#palette svg{width:34px;height:34px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.modal.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;max-height:88%;overflow:auto;border-radius:18px 18px 0 0;padding:14px 14px calc(14px + var(--sab));-webkit-user-select:text;user-select:text;touch-action:pan-y}
+.sheet h2{font-size:18px;margin:2px 0 10px}
+.sheet h3{font-size:15px;margin:14px 0 6px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.row button{flex:1 1 140px}
+input[type=text],select{font:inherit;font-size:16px;width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+label.lb{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid #e5e7eb;padding:6px 4px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+tfoot td{font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{min-height:36px;font-size:13px;padding:0 10px}
+.small{font-size:12px;color:var(--muted)}
+#prevImgs img{width:100%;border:1px solid #d1d5db;border-radius:8px;margin:6px 0;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto;pointer-events:auto}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="seg" id="floors"></div>
+    <button id="bUndo" title="Zpět">↶ Zpět</button>
+    <button id="bSum">Souhrn</button>
+    <button id="bMenu">☰</button>
+  </header>
+  <div id="view">
+    <div id="world"><img id="plan" alt=""><svg id="ov" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div id="empty"><div>Pro toto podlaží zatím není půdorys.</div><button class="primary" id="bLoadEmpty">📷 Nahrát fotku půdorysu</button></div>
+    <div id="hint"><span id="hintTxt"></span></div>
+    <div id="zoom"><button id="zIn">+</button><button id="zOut">−</button><button id="zFit" style="font-size:16px">⤢</button></div>
+  </div>
+  <div id="palette"></div>
+</div>
+
+<div class="modal" id="mEdit"><div class="sheet">
+  <h2 id="eTitle">Značka</h2>
+  <label class="lb">Druh</label><select id="eType"></select>
+  <label class="lb">Poznámka (např. výška, „nad linkou“, „2× pod TV“)</label>
+  <input type="text" id="eNote" placeholder="Poznámka…" enterkeyhint="done">
+  <div class="chips" id="eChips" style="margin-top:8px"></div>
+  <div class="row"><button class="danger" id="eDel">🗑 Smazat</button><button class="primary" id="eOk">Hotovo</button></div>
+  <div class="small">Značku posuneš tak, že ji chytneš prstem a táhneš.</div>
+</div></div>
+
+<div class="modal" id="mSum"><div class="sheet">
+  <h2>Souhrn bodů</h2>
+  <div id="sumTable"></div>
+  <div class="row"><button class="primary" id="sShare">Sdílet souhrn (text)</button><button id="sCopy">Kopírovat</button></div>
+  <h3>Uložit / poslat obrázky</h3>
+  <div class="row" id="expRow"></div>
+  <div class="row"><button class="primary" id="sAll">📤 Poslat vše (obrázky + souhrn)</button></div>
+  <div id="noteList"></div>
+  <div class="row"><button id="sClose">Zavřít</button></div>
+</div></div>
+
+<div class="modal" id="mMenu"><div class="sheet">
+  <h2>Nastavení</h2>
+  <label class="lb">Název zakázky (objeví se na exportu)</label>
+  <input type="text" id="mProj" enterkeyhint="done">
+  <label class="lb">Velikost značek</label>
+  <div class="row"><button id="mSm">− Menší</button><button id="mLg">+ Větší</button></div>
+  <div class="row"><button id="mLabels">Popisky poznámek: zap</button></div>
+  <h3>Půdorys aktuálního podlaží</h3>
+  <div class="row"><button id="mLoad">📷 Nahrát / vyměnit fotku</button><button id="mRot">↻ Otočit o 90°</button></div>
+  <div class="row"><button id="mOrig">Obnovit původní půdorys</button></div>
+  <h3>Záloha</h3>
+  <div class="row"><button id="mBackup">💾 Uložit zálohu (soubor)</button><button id="mRestore">📂 Načíst zálohu</button></div>
+  <div class="row"><button class="danger" id="mClear">Smazat všechny značky na tomto podlaží</button></div>
+  <p class="small">Vše se průběžně ukládá do tohoto telefonu (v tomto prohlížeči). Nemaž data Safari, dokud nepošleš export.</p>
+  <div class="row"><button class="primary" id="mClose">Zavřít</button></div>
+</div></div>
+
+<div class="modal" id="mPrev" style="align-items:center"><div class="sheet" style="border-radius:18px;max-height:94%">
+  <h2>Ulož si obrázek</h2>
+  <p class="small" style="font-size:14px">Podrž prst na obrázku → <b>Přidat do Fotek</b> (nebo Sdílet). Pak ho pošli do chatu.</p>
+  <div id="prevImgs"></div>
+  <div class="row"><button class="primary" id="pClose">Zavřít</button></div>
+</div></div>
+<input type="file" id="fileImg" accept="image/*" style="display:none">
+<input type="file" id="fileJson" accept="application/json,.json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* Půdorysy vložené při sestavení (data URL nebo null) */
+const EMBED = /*__EMBED__*/{"1NP": null, "2NP": null}/*__END__*/;
+const DEFAULT_PROJECT = /*__PROJ__*/"Nová zakázka"/*__ENDPROJ__*/;
+const FLOORS = ["1NP","2NP"];
+const FLOOR_NAMES = {"1NP":"1NP přízemí","2NP":"2NP patro"};
+const C = {z:"#dc2626", v:"#1d4ed8", s:"#d97706", d:"#059669", r:"#111827"};
+const SW = 0.16;
+/* Značky: prvky v jednotkových souřadnicích (střed 0,0, poloměr ~1) */
+const DOME = "M-0.85,0.15 A0.85,0.85 0 0 1 0.85,0.15 Z";
+const SYMS = [
+ {k:"z",   n:"Zásuvka 230V",     s:"Zásuvka",   c:C.z, p:[{d:DOME},{d:"M0,0.15 V0.95"}]},
+ {k:"z2",  n:"Dvojzásuvka 230V", s:"Dvojzás.",  c:C.z, p:[{d:DOME},{d:"M-0.35,0.15 V0.95 M0.35,0.15 V0.95"}], t:{x:0,y:-0.12,v:"2",z:0.62}},
+ {k:"zip", n:"Zásuvka IP44 (venk./koupelna)", s:"Zás. IP44", c:C.z, p:[{d:DOME,f:1},{d:"M0,0.15 V0.95"}], t:{x:0,y:-0.12,v:"IP",z:0.48,w:1}},
+ {k:"z400",n:"Zásuvka 400V",     s:"Zás. 400V", c:C.z, p:[{d:DOME,f:1},{d:"M0,0.15 V1.05 M-0.3,0.45 L0.3,0.3 M-0.3,0.65 L0.3,0.5 M-0.3,0.85 L0.3,0.7"}], t:{x:0,y:-0.14,v:"400",z:0.42,w:1}},
+ {k:"v1",  n:"Vypínač jednopólový (č. 1)", s:"Vyp. č.1", c:C.v, p:[{d:"M-0.25,0.35 m-0.3,0 a0.3,0.3 0 1 0 0.6,0 a0.3,0.3 0 1 0 -0.6,0",f:1},{d:"M-0.05,0.15 L0.6,-0.6 L0.85,-0.38"}], t:{x:0.55,y:0.55,v:"1",z:0.55}},
+ {k:"v5",  n:"Vypínač sériový (č. 5)", s:"Vyp. č.5", c:C.v, p:[{d:"M-0.25,0.35 m-0.3,0 a0.3,0.3 0 1 0 0.6,0 a0.3,0.3 0 1 0 -0.6,0",f:1},{d:"M-0.05,0.15 L0.6,-0.6 L0.85,-0.38 M-0.25,0.05 L0.15,-0.85 L0.45,-0.7"}], t:{x:0.6,y:0.55,v:"5",z:0.55}},
+ {k:"v6",  n:"Vypínač schodišťový / střídavý (č. 6)", s:"Vyp. č.6", c:C.v, p:[{d:"M-0.3,0 m-0.3,0 a0.3,0.3 0 1 0 0.6,0 a0.3,0.3 0 1 0 -0.6,0",f:1},{d:"M-0.1,-0.2 L0.55,-0.85 L0.8,-0.62 M-0.5,0.2 L-0.95,0.75 L-1.2,0.52"}], t:{x:0.55,y:0.45,v:"6",z:0.55}},
+ {k:"v7",  n:"Vypínač křížový (č. 7)", s:"Vyp. č.7", c:C.v, p:[{d:"M-0.3,0 m-0.3,0 a0.3,0.3 0 1 0 0.6,0 a0.3,0.3 0 1 0 -0.6,0",f:1},{d:"M-0.1,-0.2 L0.55,-0.85 L0.8,-0.62 M-0.5,0.2 L-0.95,0.75 L-1.2,0.52 M-0.1,0.2 L0.35,0.75 M-0.5,-0.2 L-0.95,-0.75"}], t:{x:0.65,y:0.45,v:"7",z:0.55}},
+ {k:"ss",  n:"Světlo stropní", s:"Světlo strop", c:C.s, p:[{d:"M-0.8,0 a0.8,0.8 0 1 0 1.6,0 a0.8,0.8 0 1 0 -1.6,0"},{d:"M-0.57,-0.57 L0.57,0.57 M-0.57,0.57 L0.57,-0.57"}]},
+ {k:"sn",  n:"Světlo nástěnné", s:"Světlo stěna", c:C.s, p:[{d:"M-0.7,-0.1 a0.7,0.7 0 1 0 1.4,0 a0.7,0.7 0 1 0 -1.4,0"},{d:"M-0.5,-0.6 L0.5,0.4 M-0.5,0.4 L0.5,-0.6"},{d:"M-0.95,0.85 H0.95",w:0.26}]},
+ {k:"lan", n:"Datová zásuvka LAN", s:"Data LAN", c:C.d, p:[{d:"M-0.85,-0.7 H0.85 V0.7 H-0.85 Z"}], t:{x:0,y:0.02,v:"LAN",z:0.5}},
+ {k:"tv",  n:"Zásuvka TV/SAT", s:"TV/SAT", c:C.d, p:[{d:"M-0.85,-0.7 H0.85 V0.7 H-0.85 Z"}], t:{x:0,y:0.02,v:"TV",z:0.6}},
+ {k:"rd",  n:"Rozvaděč (RD)", s:"Rozvaděč", c:C.r, p:[{d:"M-1.1,-0.65 H1.1 V0.65 H-1.1 Z"},{d:"M-1.1,0.65 L1.1,-0.65 V0.65 Z",f:1}], t:{x:0,y:-1.0,v:"RD",z:0.6,o:1}}
+];
+const SYM = Object.fromEntries(SYMS.map(s=>[s.k,s]));
+const TOOLS = [{k:"pan",n:"Posun plánu",s:"Ruka"}, ...SYMS, {k:"del",n:"Guma – ťukni na značku",s:"Guma"}];
+const NOTE_CHIPS = ["nad linkou","nad pracovní deskou","u postele","pod TV","h = 30 cm","h = 110 cm","h = 120 cm","na strop","venkovní","pro spotřebič"];
+
+/* ---------- stav ---------- */
+const LS = "gchz_v1_";
+let st = load();
+let undoStack = [];
+let tool = "pan";
+let selId = null;
+const imgSize = {};
+let cam = {x:0,y:0,s:1};
+const $ = id=>document.getElementById(id);
+const view=$("view"), world=$("world"), plan=$("plan"), ov=$("ov");
+
+function load(){
+  let s=null; try{ s=JSON.parse(localStorage.getItem(LS+"state")||"null"); }catch(e){}
+  if(!s||!s.floors) s={project:DEFAULT_PROJECT, cur:"1NP", size:1.8, labels:true, nextId:1, floors:{}};
+  FLOORS.forEach(f=>{ if(!s.floors[f]) s.floors[f]={items:[],custom:false}; });
+  return s;
+}
+let saveT=null;
+function save(){ dataVer++; clearTimeout(saveT); saveT=setTimeout(saveNow,150); }
+function saveNow(){
+  try{ localStorage.setItem(LS+"state", JSON.stringify(st)); }
+  catch(e){ toast("⚠️ Nepodařilo se uložit do telefonu – udělej export/zálohu!"); }
+}
+function imgSrc(f){
+  if(st.floors[f].custom){ try{ const d=localStorage.getItem(LS+"img_"+f); if(d) return d; }catch(e){} }
+  return EMBED[f]||null;
+}
+function snapshot(){ undoStack.push(JSON.stringify(st.floors)); if(undoStack.length>200) undoStack.shift(); updUndo(); }
+function undo(){
+  if(!undoStack.length) return;
+  const prev=JSON.parse(undoStack.pop());
+  FLOORS.forEach(f=>{ st.floors[f].items=prev[f].items; });
+  selId=null; save(); render(); updUndo(); toast("Vráceno zpět");
+}
+function updUndo(){ $("bUndo").disabled=!undoStack.length; }
+const items=()=>st.floors[st.cur].items;
+function unit(){ const z=imgSize[st.cur]; return z? Math.max(z.w,z.h)*st.size/100 : 20; }
+
+/* ---------- vykreslení značek (SVG i canvas ze stejné definice) ---------- */
+function symSVG(sym,x,y,u,extra){
+  let g=`<g transform="translate(${x},${y}) scale(${u})" ${extra||""}>`;
+  g+=`<circle r="1.32" fill="rgba(255,255,255,.88)"/>`;
+  for(const p of sym.p){
+    g+=`<path d="${p.d}" fill="${p.f?sym.c:"none"}" stroke="${sym.c}" stroke-width="${p.w||SW}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  if(sym.t){ const t=sym.t;
+    g+=`<text x="${t.x}" y="${t.y}" font-size="${t.z}" font-weight="800" text-anchor="middle" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" fill="${t.w?"#fff":sym.c}">${t.v}</text>`; }
+  return g+"</g>";
+}
+function symCanvas(ctx,sym,x,y,u){
+  ctx.save(); ctx.translate(x,y); ctx.scale(u,u);
+  ctx.beginPath(); ctx.arc(0,0,1.32,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.88)"; ctx.fill();
+  ctx.lineJoin="round"; ctx.lineCap="round";
+  for(const p of sym.p){ const path=new Path2D(p.d);
+    if(p.f){ ctx.fillStyle=sym.c; ctx.fill(path); }
+    ctx.strokeStyle=sym.c; ctx.lineWidth=p.w||SW; ctx.stroke(path); }
+  ctx.restore();
+  if(sym.t){ const t=sym.t; ctx.save(); ctx.fillStyle=t.w?"#fff":sym.c;
+    ctx.font=`800 ${t.z*u}px Arial, Helvetica, sans-serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(t.v, x+t.x*u, y+t.y*u); ctx.restore(); }
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function iconSVG(k){
+  if(k==="pan") return `<svg viewBox="-1.5 -1.5 3 3"><path d="M0,-1.2 V1.2 M-1.2,0 H1.2 M-0.35,-0.85 L0,-1.2 L0.35,-0.85 M-0.35,0.85 L0,1.2 L0.35,0.85 M-0.85,-0.35 L-1.2,0 L-0.85,0.35 M0.85,-0.35 L1.2,0 L0.85,0.35" stroke="#374151" stroke-width="0.14" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if(k==="del") return `<svg viewBox="-1.5 -1.5 3 3"><path d="M-0.9,-0.7 H0.9 M-0.35,-0.7 V-1 H0.35 V-0.7 M-0.7,-0.7 L-0.55,1.1 H0.55 L0.7,-0.7" stroke="#b91c1c" stroke-width="0.14" fill="none" stroke-linejoin="round"/></svg>`;
+  return `<svg viewBox="-1.5 -1.5 3 3">${symSVG(SYM[k],0,0,1)}</svg>`;
+}
+function render(){
+  const f=st.cur, z=imgSize[f];
+  if(!z){ ov.innerHTML=""; return; }
+  ov.setAttribute("width",z.w); ov.setAttribute("height",z.h); ov.setAttribute("viewBox",`0 0 ${z.w} ${z.h}`);
+  const u=unit(); let h="";
+  for(const it of items()){
+    const sym=SYM[it.t]; if(!sym) continue;
+    if(it.id===selId) h+=`<circle cx="${it.x}" cy="${it.y}" r="${u*1.7}" fill="none" stroke="#f59e0b" stroke-width="${u*0.22}" stroke-dasharray="${u*0.5} ${u*0.3}"/>`;
+    h+=symSVG(sym,it.x,it.y,u);
+    if(st.labels && it.note){
+      const fs=u*0.75, tw=it.note.length*fs*0.55+fs*0.6;
+      h+=`<g><rect x="${it.x+u*1.35}" y="${it.y-fs*0.7}" width="${tw}" height="${fs*1.4}" rx="${fs*0.3}" fill="rgba(255,255,255,.9)" stroke="${sym.c}" stroke-width="${u*0.06}"/>`+
+         `<text x="${it.x+u*1.35+fs*0.3}" y="${it.y}" font-size="${fs}" dominant-baseline="central" font-family="Arial,Helvetica,sans-serif" fill="#111827">${esc(it.note)}</text></g>`;
+    }
+  }
+  ov.innerHTML=h;
+}
+function applyCam(){ world.style.transform=`translate(${cam.x}px,${cam.y}px) scale(${cam.s})`; }
+function fit(){
+  const z=imgSize[st.cur]; if(!z) return;
+  const r=view.getBoundingClientRect();
+  const s=Math.min(r.width/z.w, r.height/z.h)*0.98;
+  cam={s, x:(r.width-z.w*s)/2, y:(r.height-z.h*s)/2}; applyCam();
+}
+function zoomAt(px,py,factor){
+  const z=imgSize[st.cur]; if(!z) return;
+  const r=view.getBoundingClientRect(); const minS=Math.min(r.width/z.w,r.height/z.h)*0.5, maxS=minS*24;
+  const ns=Math.max(minS,Math.min(maxS,cam.s*factor));
+  const ix=(px-cam.x)/cam.s, iy=(py-cam.y)/cam.s;
+  cam.s=ns; cam.x=px-ix*ns; cam.y=py-iy*ns; applyCam();
+}
+
+/* ---------- podlaží a obrázky ---------- */
+function showFloor(f, keepCam){
+  st.cur=f; selId=null; save();
+  document.querySelectorAll("#floors button").forEach(b=>b.classList.toggle("on",b.dataset.f===f));
+  const src=imgSrc(f);
+  if(!src){ plan.removeAttribute("src"); delete imgSize[f]; world.style.display="none"; $("empty").style.display="flex"; render(); updHint(); return; }
+  $("empty").style.display="none"; world.style.display="block";
+  const onl=()=>{ imgSize[f]={w:plan.naturalWidth,h:plan.naturalHeight};
+    plan.width=plan.naturalWidth; plan.height=plan.naturalHeight; render(); if(!keepCam) fit(); updHint(); };
+  if(plan.getAttribute("src")===src && plan.complete && plan.naturalWidth){ onl(); }
+  else { plan.onload=onl; plan.src=src; }
+}
+function loadImageFile(file){
+  const url=URL.createObjectURL(file); const im=new Image();
+  im.onload=()=>{
+    const max=2200, k=Math.min(1,max/Math.max(im.width,im.height));
+    const cv=document.createElement("canvas"); cv.width=Math.round(im.width*k); cv.height=Math.round(im.height*k);
+    const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(im,0,0,cv.width,cv.height);
+    enhance(ctx,cv.width,cv.height);
+    let q=0.85, d=cv.toDataURL("image/jpeg",q);
+    while(d.length>1500000 && q>0.4){ q-=0.1; d=cv.toDataURL("image/jpeg",q); }
+    URL.revokeObjectURL(url);
+    const f=st.cur, had=items().length;
+    try{ localStorage.setItem(LS+"img_"+f,d); }catch(e){ toast("⚠️ Fotka je moc velká pro uložení v telefonu"); return; }
+    st.floors[f].custom=true; save(); delete imgSize[f]; showFloor(f);
+    toast(had? "Půdorys vyměněn – zkontroluj polohu značek":"Půdorys nahrán");
+  };
+  im.onerror=()=>toast("Fotku se nepodařilo načíst");
+  im.src=url;
+}
+/* automatické vyrovnání jasu/kontrastu (do šedi, roztažení úrovní) */
+function enhance(ctx,w,h){
+  try{
+    const id=ctx.getImageData(0,0,w,h), a=id.data, hist=new Uint32Array(256);
+    for(let i=0;i<a.length;i+=4){ const g=(a[i]*0.3+a[i+1]*0.59+a[i+2]*0.11)|0; a[i]=g; hist[g]++; }
+    const n=w*h; let lo=0,hi=255,acc=0;
+    for(;lo<255;lo++){ acc+=hist[lo]; if(acc>n*0.01) break; }
+    acc=0; for(;hi>0;hi--){ acc+=hist[hi]; if(acc>n*0.05) break; }
+    if(hi-lo<40) return;
+    const sc=255/(hi-lo);
+    for(let i=0;i<a.length;i+=4){ let v=(a[i]-lo)*sc; v=v<0?0:v>255?255:v; v=255*Math.pow(v/255,1.25); a[i]=a[i+1]=a[i+2]=v; }
+    ctx.putImageData(id,0,0);
+  }catch(e){}
+}
+function rotateFloor(){
+  const f=st.cur, src=imgSrc(f); if(!src) return;
+  const im=new Image(); im.onload=()=>{
+    const cv=document.createElement("canvas"); cv.width=im.height; cv.height=im.width;
+    const ctx=cv.getContext("2d"); ctx.translate(cv.width,0); ctx.rotate(Math.PI/2); ctx.drawImage(im,0,0);
+    const d=cv.toDataURL("image/jpeg",0.88);
+    try{ localStorage.setItem(LS+"img_"+f,d); }catch(e){ toast("⚠️ Nelze uložit otočený půdorys"); return; }
+    snapshot();
+    const H=im.height; st.floors[f].items.forEach(it=>{ const x=it.x; it.x=H-it.y; it.y=x; });
+    st.floors[f].custom=true; save(); delete imgSize[f]; showFloor(f);
+  }; im.src=src;
+}
+
+/* ---------- dotyky: ťuknutí, tažení značky, posun, pinch zoom ---------- */
+const ptrs=new Map(); let gest=null;
+function toImg(cx,cy){ const r=view.getBoundingClientRect(); return {x:(cx-r.left-cam.x)/cam.s, y:(cy-r.top-cam.y)/cam.s}; }
+function hitTest(cx,cy){
+  const p=toImg(cx,cy), u=unit(), rr=Math.max(u*1.4, 24/cam.s);
+  let best=null, bd=1e18;
+  for(const it of items()){ const d=(it.x-p.x)**2+(it.y-p.y)**2; if(d<rr*rr && d<bd){bd=d;best=it;} }
+  return best;
+}
+view.addEventListener("pointerdown",e=>{
+  if(e.target.closest("#zoom")||e.target.closest("#empty")) return;
+  if(!imgSize[st.cur]) return;
+  view.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1){
+    const hit=(tool==="pan")?hitTest(e.clientX,e.clientY):hitTest(e.clientX,e.clientY);
+    gest={type:"one", sx:e.clientX, sy:e.clientY, lx:e.clientX, ly:e.clientY, hit, moved:false, dragging:false, t:Date.now()};
+  } else if(ptrs.size===2){
+    if(gest&&gest.dragging){ save(); render(); }
+    const [a,b]=[...ptrs.values()]; const r=view.getBoundingClientRect();
+    gest={type:"pinch", d0:Math.hypot(a.x-b.x,a.y-b.y)||1, s0:cam.s, mx:(a.x+b.x)/2-r.left, my:(a.y+b.y)/2-r.top, cx:cam.x, cy:cam.y};
+  }
+  e.preventDefault();
+});
+view.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId)) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(!gest) return;
+  if(gest.type==="pinch" && ptrs.size>=2){
+    const [a,b]=[...ptrs.values()]; const r=view.getBoundingClientRect();
+    const z=imgSize[st.cur]; const minS=Math.min(r.width/z.w,r.height/z.h)*0.5, maxS=minS*24;
+    const ns=Math.max(minS,Math.min(maxS,gest.s0*Math.hypot(a.x-b.x,a.y-b.y)/gest.d0));
+    const mx=(a.x+b.x)/2-r.left, my=(a.y+b.y)/2-r.top;
+    const ix=(gest.mx-gest.cx)/gest.s0, iy=(gest.my-gest.cy)/gest.s0;
+    cam.s=ns; cam.x=mx-ix*ns; cam.y=my-iy*ns; applyCam();
+  } else if(gest.type==="one"){
+    if(!gest.moved && Math.hypot(e.clientX-gest.sx,e.clientY-gest.sy)>8) gest.moved=true;
+    if(gest.moved){
+      if(gest.hit && tool!=="del"){
+        if(!gest.dragging){ snapshot(); gest.dragging=true; selId=gest.hit.id; }
+        const p=toImg(e.clientX,e.clientY); gest.hit.x=Math.round(p.x); gest.hit.y=Math.round(p.y); render();
+      } else { cam.x+=e.clientX-gest.lx; cam.y+=e.clientY-gest.ly; applyCam(); }
+    }
+    gest.lx=e.clientX; gest.ly=e.clientY;
+  }
+});
+function endPtr(e){
+  if(!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if(!gest) return;
+  if(gest.type==="one" && e.type==="pointerup"){
+    if(gest.dragging){ selId=null; save(); render(); }
+    else if(!gest.moved) tap(e.clientX,e.clientY,gest.hit);
+  } else if(gest.type==="one" && gest.dragging){ save(); render(); }
+  if(ptrs.size===0) gest=null; else gest={type:"idle"};
+}
+view.addEventListener("pointerup",endPtr);
+view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); const r=view.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-e.deltaY*0.0015)); },{passive:false});
+["gesturestart","gesturechange","gestureend"].forEach(ev=>document.addEventListener(ev,e=>e.preventDefault()));
+document.addEventListener("dblclick",e=>e.preventDefault());
+
+function tap(cx,cy,hit){
+  if(tool==="del"){ if(hit){ snapshot(); st.floors[st.cur].items=items().filter(i=>i!==hit); save(); render(); toast("Smazáno: "+SYM[hit.t].n); } return; }
+  if(hit){ openEdit(hit); return; }
+  if(tool==="pan"){ toast("Vyber dole značku a ťukni do plánu"); return; }
+  const p=toImg(cx,cy), z=imgSize[st.cur];
+  if(p.x<0||p.y<0||p.x>z.w||p.y>z.h) return;
+  snapshot();
+  items().push({id:st.nextId++, t:tool, x:Math.round(p.x), y:Math.round(p.y), note:""});
+  save(); render(); updHint();
+  if(navigator.vibrate) navigator.vibrate(10);
+}
+
+/* ---------- úprava značky ---------- */
+let editIt=null, editOpenedAt=0;
+function openEdit(it){
+  editIt=it; selId=it.id; render();
+  $("eTitle").textContent=SYM[it.t].n+" ("+st.cur+")";
+  $("eType").value=it.t; $("eNote").value=it.note||"";
+  $("mEdit").classList.add("show"); editOpenedAt=Date.now();
+}
+function closeEdit(){
+  if(editIt){
+    const n=$("eNote").value.trim(), t=$("eType").value;
+    if(n!==(editIt.note||"")||t!==editIt.t){ snapshot(); editIt.note=n; editIt.t=t; save(); }
+  }
+  editIt=null; selId=null; $("mEdit").classList.remove("show"); $("eNote").blur(); render();
+}
+$("eOk").onclick=closeEdit;
+$("eNote").addEventListener("keydown",e=>{ if(e.key==="Enter") closeEdit(); });
+$("eDel").onclick=()=>{ if(!editIt) return; snapshot(); const d=editIt; st.floors[st.cur].items=items().filter(i=>i!==d); editIt=null; selId=null; save(); $("mEdit").classList.remove("show"); render(); toast("Smazáno"); };
+$("mEdit").addEventListener("click",e=>{ if(e.target.id==="mEdit" && Date.now()-editOpenedAt>600) closeEdit(); });
+$("eType").innerHTML=SYMS.map(s=>`<option value="${s.k}">${s.n}</option>`).join("");
+$("eChips").innerHTML=NOTE_CHIPS.map(c=>`<button type="button">${c}</button>`).join("");
+$("eChips").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; const v=$("eNote").value.trim(); $("eNote").value=v? v+", "+b.textContent : b.textContent; });
+
+/* ---------- souhrn ---------- */
+function counts(){
+  const r={}; SYMS.forEach(s=>{ r[s.k]={}; FLOORS.forEach(f=>r[s.k][f]=0); });
+  FLOORS.forEach(f=>st.floors[f].items.forEach(it=>{ if(r[it.t]) r[it.t][f]++; }));
+  return r;
+}
+function sumText(){
+  const c=counts(); let t=`${st.project} – soupis elektro bodů (${new Date().toLocaleDateString("cs-CZ")})\n`;
+  t+=`Druh: ${FLOORS.join(" / ")} / celkem\n`;
+  let tot=0;
+  SYMS.forEach(s=>{ const row=FLOORS.map(f=>c[s.k][f]); const sm=row.reduce((a,b)=>a+b,0); if(sm){ tot+=sm; t+=`${s.n}: ${row.join(" / ")} / ${sm} ks\n`; } });
+  t+=`Celkem bodů: ${tot}\n`;
+  FLOORS.forEach(f=>{ const n=st.floors[f].items.filter(i=>i.note); if(n.length){ t+=`\nPoznámky ${f}:\n`; n.forEach(i=>t+=`- ${SYM[i.t].n}: ${i.note}\n`); } });
+  return t;
+}
+function openSum(){
+  const c=counts(); let h=`<table><thead><tr><th>Druh</th>${FLOORS.map(f=>`<th>${f}</th>`).join("")}<th>Celkem</th></tr></thead><tbody>`;
+  const ft={}; FLOORS.forEach(f=>ft[f]=0); let all=0;
+  SYMS.forEach(s=>{ const row=FLOORS.map(f=>c[s.k][f]); const sm=row.reduce((a,b)=>a+b,0);
+    FLOORS.forEach((f,i)=>ft[f]+=row[i]); all+=sm;
+    h+=`<tr style="${sm?"":"color:#9ca3af"}"><td>${s.n}</td>${row.map(v=>`<td>${v}</td>`).join("")}<td><b>${sm}</b></td></tr>`; });
+  h+=`</tbody><tfoot><tr><td>Celkem bodů</td>${FLOORS.map(f=>`<td>${ft[f]}</td>`).join("")}<td>${all}</td></tr></tfoot></table>`;
+  $("sumTable").innerHTML=h;
+  let nl=""; FLOORS.forEach(f=>{ const n=st.floors[f].items.filter(i=>i.note); if(n.length){ nl+=`<h3>Poznámky ${f}</h3><ul style="margin:0;padding-left:18px;font-size:14px">`+n.map(i=>`<li>${esc(SYM[i.t].n)}: ${esc(i.note)}</li>`).join("")+`</ul>`; } });
+  $("noteList").innerHTML=nl;
+  $("expRow").innerHTML=FLOORS.map(f=>`<button data-f="${f}">🖼 Obrázek ${f}</button>`).join("");
+  $("mSum").classList.add("show");
+  prepareExports();
+}
+$("bSum").onclick=openSum;
+$("sClose").onclick=()=>$("mSum").classList.remove("show");
+$("mSum").addEventListener("click",e=>{ if(e.target.id==="mSum") $("mSum").classList.remove("show"); });
+$("sCopy").onclick=async()=>{ try{ await navigator.clipboard.writeText(sumText()); toast("Souhrn zkopírován"); }catch(e){ prompt("Zkopíruj souhrn:",sumText()); } };
+$("sShare").onclick=async()=>{ const t=sumText(); if(navigator.share){ try{ await navigator.share({title:st.project,text:t}); }catch(e){} } else { try{ await navigator.clipboard.writeText(t); toast("Souhrn zkopírován"); }catch(e){} } };
+let prepared={}, prepVer=-1, dataVer=0;
+async function prepareExports(){
+  const v=dataVer; if(prepVer===v) return prepared;
+  const out={}; for(const f of FLOORS){ const b=await exportFloor(f,true); if(b) out[f]=new File([b],fname(f),{type:"image/png"}); }
+  prepared=out; prepVer=v; return out;
+}
+function getFiles(list){ return (prepVer===dataVer)? list.map(f=>prepared[f]).filter(Boolean) : null; }
+$("expRow").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  const files=getFiles([b.dataset.f]); if(!files){ toast("Chvilku, připravuji obrázky…"); prepareExports(); return; }
+  if(!files.length){ toast(b.dataset.f+": chybí půdorys"); return; }
+  shareFiles(files); });
+$("sAll").onclick=()=>{
+  const files=getFiles(FLOORS); if(!files){ toast("Chvilku, připravuji obrázky…"); prepareExports(); return; }
+  const t=sumText(); const all=files.concat([new File([t],fname("souhrn").replace(".png",".txt"),{type:"text/plain"})]);
+  shareFiles(all,t);
+};
+function fname(f){ return (st.project||"zakazka").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"_")+"_"+f+".png"; }
+function shareFiles(files,text){
+  // volá se přímo z ťuknutí (iOS vyžaduje gesto uživatele)
+  if(navigator.canShare && navigator.canShare({files})){
+    navigator.share(text?{files,title:st.project,text}:{files,title:st.project}).catch(e=>{ if(!e||e.name!=="AbortError") showPreview(files); });
+    return;
+  }
+  showPreview(files);
+}
+function showPreview(files){
+  const imgs=files.filter(f=>f.type.startsWith("image/"));
+  const others=files.filter(f=>!f.type.startsWith("image/"));
+  $("prevImgs").innerHTML="";
+  imgs.forEach(f=>{ const i=document.createElement("img"); i.src=URL.createObjectURL(f); i.alt=f.name; $("prevImgs").appendChild(i); });
+  files.forEach(f=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(f); a.download=f.name; a.textContent="⬇ Stáhnout "+f.name; a.style.cssText="display:block;margin:6px 0;font-size:14px"; $("prevImgs").appendChild(a); });
+  $("mPrev").classList.add("show");
+}
+$("pClose").onclick=()=>$("mPrev").classList.remove("show");
+async function shareOrDownload(files,text){ shareFiles(files,text); }
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+async function exportFloor(f,quiet){
+  const src=imgSrc(f); if(!src){ if(!quiet) toast(f+": chybí půdorys"); return null; }
+  const im=await loadImg(src); const W=im.naturalWidth, H=im.naturalHeight;
+  const u=Math.max(W,H)*st.size/100;
+  const c=counts(); const used=SYMS.filter(s=>c[s.k][f]>0);
+  const pad=Math.round(W*0.02), lh=Math.round(Math.max(W,H)*0.028), head=Math.round(lh*1.8);
+  const cv=document.createElement("canvas"); const ctx=cv.getContext("2d");
+  ctx.font=`${lh*0.62}px Arial, Helvetica, sans-serif`;
+  const maxT=Math.max(...used.map(s=>ctx.measureText(`${s.n}: ${c[s.k][f]} ks`).width), ctx.measureText("Celkem bodů 1NP: 999").width);
+  const cols=Math.max(1,Math.min(4,Math.floor((W-pad*2)/(maxT+lh*2.6)))), rows=Math.ceil((used.length+1)/cols), legH=pad*2+rows*lh*1.5;
+  cv.width=W; cv.height=head+H+legH; ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle="#111827"; ctx.font=`700 ${lh}px Arial, Helvetica, sans-serif`; ctx.textBaseline="middle";
+  ctx.fillText(`${st.project} – ${FLOOR_NAMES[f]} – ${new Date().toLocaleDateString("cs-CZ")}`, pad, head/2);
+  ctx.drawImage(im,0,head);
+  ctx.save(); ctx.translate(0,head);
+  for(const it of st.floors[f].items){ const sym=SYM[it.t]; if(!sym) continue; symCanvas(ctx,sym,it.x,it.y,u);
+    if(st.labels&&it.note){ const fs=u*0.75; ctx.font=`${fs}px Arial, Helvetica, sans-serif`; const tw=ctx.measureText(it.note).width+fs*0.6;
+      ctx.fillStyle="rgba(255,255,255,.9)"; ctx.strokeStyle=sym.c; ctx.lineWidth=u*0.06; ctx.beginPath(); ctx.rect(it.x+u*1.35,it.y-fs*0.7,tw,fs*1.4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle="#111827"; ctx.textBaseline="middle"; ctx.fillText(it.note,it.x+u*1.35+fs*0.3,it.y); } }
+  ctx.restore();
+  const y0=head+H; ctx.fillStyle="#f3f4f6"; ctx.fillRect(0,y0,W,legH);
+  const cw=(W-pad*2)/cols, lu=lh*0.42; let tot=0;
+  used.forEach((s,i)=>{ const cx=pad+(i%cols)*cw, cy=y0+pad+Math.floor(i/cols)*lh*1.5+lh*0.7; symCanvas(ctx,s,cx+lu*1.4,cy,lu);
+    ctx.fillStyle="#111827"; ctx.font=`${lh*0.62}px Arial, Helvetica, sans-serif`; ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.fillText(`${s.n}: ${c[s.k][f]} ks`, cx+lu*3.2, cy); tot+=c[s.k][f]; });
+  const i=used.length, cx=pad+(i%cols)*cw, cy=y0+pad+Math.floor(i/cols)*lh*1.5+lh*0.7;
+  ctx.font=`700 ${lh*0.62}px Arial, Helvetica, sans-serif`; ctx.fillStyle="#111827"; ctx.fillText(`Celkem bodů ${f}: ${tot}`, cx+lu*0.4, cy);
+  return await new Promise(r=>cv.toBlob(r,"image/png"));
+}
+
+/* ---------- menu ---------- */
+$("bMenu").onclick=()=>{ $("mProj").value=st.project; $("mLabels").textContent="Popisky poznámek: "+(st.labels?"zap":"vyp"); $("mOrig").style.display=(st.floors[st.cur].custom&&EMBED[st.cur])?"":"none"; $("mMenu").classList.add("show"); };
+function closeMenu(){ const v=$("mProj").value.trim(); if(v&&v!==st.project){ st.project=v; save(); updProj(); } $("mMenu").classList.remove("show"); }
+$("mClose").onclick=closeMenu;
+$("mMenu").addEventListener("click",e=>{ if(e.target.id==="mMenu") closeMenu(); });
+$("mSm").onclick=()=>{ st.size=Math.max(0.5,+(st.size/1.2).toFixed(2)); save(); render(); };
+$("mLg").onclick=()=>{ st.size=Math.min(5,+(st.size*1.2).toFixed(2)); save(); render(); };
+$("mLabels").onclick=()=>{ st.labels=!st.labels; $("mLabels").textContent="Popisky poznámek: "+(st.labels?"zap":"vyp"); save(); render(); };
+$("mLoad").onclick=()=>$("fileImg").click();
+$("bLoadEmpty").onclick=()=>$("fileImg").click();
+$("fileImg").onchange=e=>{ const f=e.target.files[0]; if(f) loadImageFile(f); e.target.value=""; $("mMenu").classList.remove("show"); };
+$("mRot").onclick=()=>{ if(confirm("Otočit půdorys "+st.cur+" o 90° (značky se otočí s ním)?")){ $("mMenu").classList.remove("show"); rotateFloor(); } };
+$("mOrig").onclick=()=>{ if(!confirm("Vrátit původní půdorys "+st.cur+"? Značky zůstanou na stejných souřadnicích.")) return; st.floors[st.cur].custom=false; try{localStorage.removeItem(LS+"img_"+st.cur);}catch(e){} save(); delete imgSize[st.cur]; $("mMenu").classList.remove("show"); showFloor(st.cur); };
+$("mClear").onclick=()=>{ if(!items().length) return; if(confirm("Opravdu smazat všechny značky na "+st.cur+"? (jde vrátit tlačítkem Zpět)")){ snapshot(); st.floors[st.cur].items=[]; save(); render(); $("mMenu").classList.remove("show"); } };
+$("mBackup").onclick=async()=>{
+  const data={app:"gch-zakreslovac",v:1,state:st,images:{}}; FLOORS.forEach(f=>{ if(st.floors[f].custom) data.images[f]=imgSrc(f); });
+  const file=new File([JSON.stringify(data)],fname("zaloha").replace(".png",".json"),{type:"application/json"});
+  await shareOrDownload([file]);
+};
+$("mRestore").onclick=()=>$("fileJson").click();
+$("fileJson").onchange=e=>{ const file=e.target.files[0]; e.target.value=""; if(!file) return;
+  file.text().then(t=>{ const d=JSON.parse(t); if(!d||d.app!=="gch-zakreslovac") throw 0;
+    snapshot(); FLOORS.forEach(f=>{ if(d.images&&d.images[f]) localStorage.setItem(LS+"img_"+f,d.images[f]); });
+    st=Object.assign(load(),d.state); FLOORS.forEach(f=>{ if(!st.floors[f]) st.floors[f]={items:[],custom:false}; delete imgSize[f]; });
+    saveNow(); updProj(); $("mMenu").classList.remove("show"); showFloor(st.cur); toast("Záloha načtena"); })
+  .catch(()=>toast("Soubor zálohy se nepodařilo načíst")); };
+
+/* ---------- UI ---------- */
+function updProj(){ document.title=st.project+" – zakreslovač"; }
+function updHint(){
+  const n=items().length;
+  let t= tool==="pan" ? "Vyber značku dole, pak ťukni do plánu. Dvěma prsty zoom." :
+         tool==="del" ? "Guma: ťukni na značku, kterou chceš smazat." :
+         "Vkládáš: "+SYM[tool].n+" – ťukni do plánu.";
+  $("hintTxt").textContent=t+"  ("+st.cur+": "+n+" ks)";
+}
+let toastT=null; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1800); }
+$("floors").innerHTML=FLOORS.map(f=>`<button data-f="${f}">${f}</button>`).join("");
+$("floors").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b&&b.dataset.f!==st.cur) showFloor(b.dataset.f); });
+$("palette").innerHTML=TOOLS.map(t=>`<button data-k="${t.k}" title="${t.n}">${iconSVG(t.k)}<span>${t.s}</span></button>`).join("");
+$("palette").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; tool=b.dataset.k;
+  document.querySelectorAll("#palette button").forEach(x=>x.classList.toggle("on",x===b)); updHint(); });
+document.querySelector('#palette button[data-k="pan"]').classList.add("on");
+$("bUndo").onclick=undo;
+$("zIn").onclick=()=>{ const r=view.getBoundingClientRect(); zoomAt(r.width/2,r.height/2,1.4); };
+$("zOut").onclick=()=>{ const r=view.getBoundingClientRect(); zoomAt(r.width/2,r.height/2,1/1.4); };
+$("zFit").onclick=fit;
+window.addEventListener("resize",()=>{ if(imgSize[st.cur]) fit(); });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) saveNow(); });
+window.addEventListener("pagehide",saveNow);
+updProj(); updUndo(); showFloor(st.cur);
+window.__gch={st:()=>st, counts, sumText, exportFloor, SYMS};
+</script>
+</body>
+</html>
